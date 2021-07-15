@@ -6,12 +6,14 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-import cytoolz
+import pandas as pd
+import numpy as np
 import joblib
 from sklearn.metrics import SCORERS
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import SGDClassifier
+from sklearn.compose import ColumnTransformer, make_column_transformer
 from sklearn.pipeline import Pipeline
 
 
@@ -23,6 +25,8 @@ class Optimizer:
         self._batch_size = batch_size
         self._test_size = test_size
         self.model_ = None
+        self.model_dir = Path(os.path.dirname(self.module.__file__)) / "models"
+        self.model_dir.mkdir(exist_ok=True)
     
     def parser(self, parser_fn):
         self._parser_fn = parser_fn
@@ -52,13 +56,17 @@ class Optimizer:
         for f, t in batch:
             features.append(f)
             targets.append(t)
-        return features, targets
+        return pd.DataFrame(features), np.array(targets)
 
     def optimize(self):
         # TODO: don't hard code this!
         self.model_ = Pipeline(
             steps=[
-                ("featurizer", CountVectorizer()),
+                (
+                    "featurizer", ColumnTransformer([
+                        ("count_vectorizer", CountVectorizer(), [0]),
+                    ])
+                ),
                 ("estimator", SGDClassifier(warm_start=True, loss="log"))
             ]
         )
@@ -76,7 +84,6 @@ class Optimizer:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=self._test_size
         )
-
         self.model_.fit(X_train, y_train)
         train_score = scorer(self.model_, X_train, y_train)
         test_score = scorer(self.model_, X_test, y_test)
@@ -85,13 +92,18 @@ class Optimizer:
         joblib.dump(self.model_, self.model_path)
         return self.model_
 
-    def __call__(self, X) -> Any:
+    def __call__(self, *args, as_proba=False) -> Any:
+        X = [args]
         # TODO: reserved for when model is trained 
         if self.model_path.exists():
             self.model_ = joblib.load(self.model_path)
         else:
             self.model_ = self.optimize()
-        return self.model_.predict_proba(X)
+
+        predicted_probas = self.model_.predict_proba(X)
+        if as_proba:
+            return predicted_probas[0, 1]
+        return predicted_probas.argmax()
 
 
 def optimize(fn=None, *, data=None):

@@ -12,7 +12,7 @@ $ source .venv/bin/activate
 ## What is this Project?
 
 `software20` aims to provide a sketch of what a
-["software 2.0"](https://blog.nodejs.dk/wp-content/uploads/2017/11/software-2-0-a64152b37c35)
+["software 2.0"](https://karpathy.medium.com/software-2-0-a64152b37c35)
 programming language would look and feel like.
 
 ### Software 1.0

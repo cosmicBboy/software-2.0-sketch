@@ -12,8 +12,8 @@ def detect_spam(text: str) -> bool:
 
 @detect_spam.parser
 def _(datum: str) -> Tuple[str, bool]:
-    target, features = datum.split("\t")
-    return features, target == "spam"
+    target, text = datum.split("\t")
+    return [text], target == "spam"
 
 
 class NewsCategory(Enum):
